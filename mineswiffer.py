@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import matplotlib.pytplot as plt
+import matplotlib.pyplot as plt
 import copy
+from rich import print
 
 
 def neighboring_squares(x,y,gridshape):
@@ -166,8 +167,10 @@ class Mines():
         """
         if self.flagged[x_try][y_try] != 1:
             print(f"Coordinate {str(x_try)} , {str(y_try)} has already been flagged. Ignoring")
+            return(True)
         elif self.mask[x_try][y_try] == 1:
             print(f"Coordinate {str(x_try)} , {str(y_try)} has already been opened. Ignoring")
+            return(True)
         else:
             # Record the try
             self.tried.append((x_try, y_try))
@@ -220,6 +223,25 @@ class Mines():
     def show_solution(self):
         """Reveal positions of mines"""
         plt.imshow(self.grid)
+        plt.show()
+
+
+    def print_solution(self):
+        """Print mine positions with rich"""
+        trtab = {
+            '-1' : '[red on red]x [/]',
+            '0' :  '[white on white]0 [/]',
+            '1' :  '[blue on white]1 [/]',
+            '2' :  '[green on white]2 [/]',
+            '3' :  '[red on white]3 [/]',
+            '4' :  '[navy_blue on white]4 [/]',
+            '5' :  '[dark_red on white]5 [/]',
+            '6' :  '[purple on white]6 [/]',
+            '7' :  '[black on white]7 [/]',
+            '8' :  '[bright_black on white]7 [/]',
+            }
+        out = '\n'.join([''.join([trtab[str(i)] for i in l]) for l in self.neighbor_mines])
+        return(out)
 
 
     def show_revealed(self):
@@ -228,6 +250,34 @@ class Mines():
         Mask overlaid on number grid
         """
         plt.imshow(self.mask * self.neighbor_mines)
+
+
+    def print_revealed(self):
+        trtab = {
+            '-1' : '[red on red]x [/]',
+            '0' :  '[white on white]0 [/]',
+            '1' :  '[blue on white]1 [/]',
+            '2' :  '[green on white]2 [/]',
+            '3' :  '[red on white]3 [/]',
+            '4' :  '[navy_blue on white]4 [/]',
+            '5' :  '[dark_red on white]5 [/]',
+            '6' :  '[purple on white]6 [/]',
+            '7' :  '[black on white]7 [/]',
+            '8' :  '[bright_black on white]7 [/]',
+            }
+        out = [[trtab[str(i)] for i in l] for l in self.neighbor_mines]
+        # Overlay mask
+        for x in range(len(self.mask)):
+            for y in range(len(self.mask[x])):
+                if self.mask[x][y] == 0:
+                    out[x][y] = '[bright_black on bright_black]  [/]'
+        for row in range(self.shape[0]):
+            out[row].insert(0, str(row).ljust(3))
+        out.insert(
+            0,
+            ['.  '] + [str(i).ljust(2) for i in list(range(self.shape[1]))])
+        out = '\n'.join([''.join(l) for l in out])
+        return(out)
 
 
     def show_tried(self):
@@ -291,14 +341,7 @@ class Mines():
         str
             Text summary of game state
         """
-        return(
-f"""Grid dimensions: {str(self.shape)}
-Total mines: {str(sum(sum(self.grid)))}
-Total tries: {str(len(self.tried))}
-Squares unmasked: {str(sum(sum(self.mask)))}
-Mines flagged: {str(sum(sum(self.flagged == 0)))}
-Correct flags: {str(self.correct_flags())}
-""")
+        return(f"Grid dimensions: {str(self.shape)}\nTotal mines: {str(sum(sum(self.grid)))}\nTotal tries: {str(len(self.tried))}\nSquares unmasked: {str(sum(sum(self.mask)))}\n Mines flagged: {str(sum(sum(self.flagged == 0)))}\nCorrect flags: {str(self.correct_flags())}\n")
 
 
     ## Autoplay ########################################################
@@ -374,7 +417,7 @@ Correct flags: {str(self.correct_flags())}
         
         autotry : bool
             Automatically try the squares that are suggested, with
-            self.try_squares(). This modifies the Mines object in place.
+            self.try_square(). This modifies the Mines object in place.
 
         Returns
         -------
@@ -432,4 +475,15 @@ Correct flags: {str(self.correct_flags())}
 
 
 if __name__ == "__main__":
-    print("This is a test")
+    mm = Mines(16, 16, 30)
+    # mm.show_solution()
+    # mm.autoplay_random()
+    survived = True
+    while survived:
+        print(mm.print_revealed())
+        print()
+        x = int(input("Please input row: "))
+        y = int(input("Please input column: "))
+        survived = mm.try_square(x,y)
+    print(mm.print_revealed())
+    print("[bold red]GAME OVER[/]")
