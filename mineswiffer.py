@@ -219,6 +219,14 @@ class Mines():
                 return(True)
 
 
+    def try_square_random(self):
+        """Try a random square that is not yet revealed"""
+        xx, yy = np.where(self.mask == 0)
+        coords = list(zip(xx,yy))
+        (x,y) = coords[np.random.choice(len(coords))]
+        return(self.try_square(x,y))
+
+
     ## Graphical output #################################################
 
     def show_solution(self):
@@ -230,16 +238,6 @@ class Mines():
     def render_solution(self):
         """Render mine positions with rich markup"""
         trtab = {
-            # '-1' : Text('x ', style='red on red'),
-            # '0' :  Text('0 ', style='white in white'),
-            # '1' :  Text('1 ', style='blue on white'),
-            # '2' :  Text('2 ', 'green on white'),
-            # '3' :  Text('3 ', 'red on white'),
-            # '4' :  Text('4 ', 'navy_blue on white'),
-            # '5' :  Text('5 ', 'dark_red on white'),
-            # '6' :  Text('6 ', 'purple on white'),
-            # '7' :  Text('7 ', 'black on white'),
-            # '8' :  Text('8 ', 'bright_black on white')
             '-1' : '[red on red]x [/]',
             '0' :  '[white on white]0 [/]',
             '1' :  '[blue on white]1 [/]',
@@ -276,23 +274,26 @@ class Mines():
         plt.imshow(self.mask * self.neighbor_mines)
 
 
-    def print_revealed(self):
+    def render_revealed(self):
         """Render and string revealed tiles with rich markup"""
         out = self.render_solution()
         # Overlay mask; hide not revealed mines
         for x in range(len(self.mask)):
             for y in range(len(self.mask[x])):
                 if self.mask[x][y] == 0:
-                    # out[x][y].stylize('bright_black on bright_black')# = '[bright_black on bright_black]  [/]'
                     out[x][y] = '[bright_black on bright_black]  [/]'
 
         # Overlay flagged mines
         for x in range(len(self.flagged)):
             for y in range(len(self.flagged[x])):
                 if self.flagged[x][y] == 0:
-                    # out[x][y] = Text('! ', 'red on blue')#'[red on blue]! [/]'
                     out[x][y] = '[red on blue]! [/]'
 
+        return(out)
+
+
+    def print_revealed(self):
+        out = self.render_revealed()
         # Insert row and line numbers as first row and column
         for row in range(self.shape[0]):
             out[row].insert(0, str(row).ljust(3))
@@ -498,6 +499,11 @@ class Mines():
 
         Terminates when all mines have been found, or when further iterations
         make no progress.
+
+        Returns
+        -------
+        bool
+            True if all mines flagged, False if no progress possible
         """
         proceed = True
         n = 0
@@ -508,9 +514,11 @@ class Mines():
             if self.correct_flags() == sum(sum(self.grid)):
                 print("All mines correctly flagged")
                 proceed = False
+                return(True)
             if len(ff) == 0 and len(tt) == 0:
                 print("No further progress possible")
                 proceed = False
+                return(False)
             n += 1
 
 
@@ -531,31 +539,45 @@ if __name__ == "__main__":
     print("Game starts!")
     counter = 0
 
-    x = int(input("Please input row of initial guess: "))
-    y = int(input("Please input column of initial guess: "))
-    survived = mm.try_square(x,y)
+    while survived:
+        # Show revealed squares
+        print(mm.print_revealed())
+        move = input("[t]ry, [f]lag, [u]nflag, [r]andom, [s]uggest tries, [a]utoplay: ")
+        if move.lower().startswith('t'):
+            # Try square
+            x = int(input("Please input row of initial guess: "))
+            y = int(input("Please input column of initial guess: "))
+            survived = mm.try_square(x,y)
+        elif  move.lower().startswith('f'):
+            # Flag square
+            x = int(input("Please input row of square to flag: "))
+            y = int(input("Please input column of square to flag: "))
+            mm.flag_square(x,y)
+        elif  move.lower().startswith('u'):
+            x = int(input("Please input row of square to unflag: "))
+            y = int(input("Please input column of square to unflag: "))
+            mm.unflag_square(x,y)
+        elif move.lower().startswith('r'):
+            survived = mm.try_square_random()
+        elif move.lower().startswith('s'):
+            sugg = mm.suggest_tries()
+            to_print = mm.render_revealed()
+            for (x,y) in sugg:
+                to_print[x][y] = '[green on green]  [/]'
+            # Insert row and line numbers as first row and column
+            for row in range(mm.shape[0]):
+                to_print[row].insert(0, str(row).ljust(3))
+            to_print.insert(
+                0,
+                ['.  '] + [str(i).ljust(2) for i in list(range(mm.shape[1]))])
+            to_print = '\n'.join([''.join(l) for l in to_print])
+            print(to_print)
+
+        elif move.lower().startswith('a'):
+            print("Commencing autoplay...")
+            survived = not mm.autoplay_run()
+        else:
+            print("Invalid option")
     print(mm.print_revealed())
-    input("Commencing autoplay...")
-    if survived:
-        mm.autoplay_run()
-    else:
-        print("GAME OVER")
-    print(mm.print_revealed())
+    print("GAME OVER")
     print(mm.print_solution())
-
-#     mm.autoplay_random()
-#     print(mm.print_revealed())
-
-#     while survived:
-#         counter += 1
-#         print(f"[bold blue]Turn number {str(counter)}[/]")
-#         print(mm.print_revealed())
-#         print()
-#         x = int(input("Please input row: "))
-#         y = int(input("Please input column: "))
-#         survived = mm.try_square(x,y)
-#         if mm.check_endstate(): # If game is finished
-#             print("[bold green]GAME SOLVED[/]")
-#             break
-#     print(mm.print_revealed())
-#     print("[bold red]GAME OVER[/]")
