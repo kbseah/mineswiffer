@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 from rich import print
+from rich.text import Text
 
 
 def neighboring_squares(x,y,gridshape):
@@ -226,34 +227,19 @@ class Mines():
         plt.show()
 
 
-    def print_solution(self):
-        """Print mine positions with rich"""
+    def render_solution(self):
+        """Render mine positions with rich markup"""
         trtab = {
-            '-1' : '[red on red]x [/]',
-            '0' :  '[white on white]0 [/]',
-            '1' :  '[blue on white]1 [/]',
-            '2' :  '[green on white]2 [/]',
-            '3' :  '[red on white]3 [/]',
-            '4' :  '[navy_blue on white]4 [/]',
-            '5' :  '[dark_red on white]5 [/]',
-            '6' :  '[purple on white]6 [/]',
-            '7' :  '[black on white]7 [/]',
-            '8' :  '[bright_black on white]7 [/]',
-            }
-        out = '\n'.join([''.join([trtab[str(i)] for i in l]) for l in self.neighbor_mines])
-        return(out)
-
-
-    def show_revealed(self):
-        """Show current state of play
-
-        Mask overlaid on number grid
-        """
-        plt.imshow(self.mask * self.neighbor_mines)
-
-
-    def print_revealed(self):
-        trtab = {
+            # '-1' : Text('x ', style='red on red'),
+            # '0' :  Text('0 ', style='white in white'),
+            # '1' :  Text('1 ', style='blue on white'),
+            # '2' :  Text('2 ', 'green on white'),
+            # '3' :  Text('3 ', 'red on white'),
+            # '4' :  Text('4 ', 'navy_blue on white'),
+            # '5' :  Text('5 ', 'dark_red on white'),
+            # '6' :  Text('6 ', 'purple on white'),
+            # '7' :  Text('7 ', 'black on white'),
+            # '8' :  Text('8 ', 'bright_black on white')
             '-1' : '[red on red]x [/]',
             '0' :  '[white on white]0 [/]',
             '1' :  '[blue on white]1 [/]',
@@ -266,11 +252,48 @@ class Mines():
             '8' :  '[bright_black on white]7 [/]',
             }
         out = [[trtab[str(i)] for i in l] for l in self.neighbor_mines]
-        # Overlay mask
+        return(out)
+
+
+    def print_solution(self):
+        """String game solution with rich markup"""
+        out = self.render_solution()
+        # Insert row and line numbers as first row and column
+        for row in range(self.shape[0]):
+            out[row].insert(0, str(row).ljust(3))
+        out.insert(
+            0,
+            ['.  '] + [str(i).ljust(2) for i in list(range(self.shape[1]))])
+        out = '\n'.join([''.join(l) for l in out])
+        return(out)
+
+
+    def show_revealed(self):
+        """Show current state of play
+
+        Mask overlaid on number grid
+        """
+        plt.imshow(self.mask * self.neighbor_mines)
+
+
+    def print_revealed(self):
+        """Render and string revealed tiles with rich markup"""
+        out = self.render_solution()
+        # Overlay mask; hide not revealed mines
         for x in range(len(self.mask)):
             for y in range(len(self.mask[x])):
                 if self.mask[x][y] == 0:
+                    # out[x][y].stylize('bright_black on bright_black')# = '[bright_black on bright_black]  [/]'
                     out[x][y] = '[bright_black on bright_black]  [/]'
+
+        # Overlay flagged mines
+        for x in range(len(self.flagged)):
+            for y in range(len(self.flagged[x])):
+                if self.flagged[x][y] == 0:
+                    # out[x][y] = Text('! ', 'red on blue')#'[red on blue]! [/]'
+                    out[x][y] = '[red on blue]! [/]'
+
+        # Insert row and line numbers as first row and column
         for row in range(self.shape[0]):
             out[row].insert(0, str(row).ljust(3))
         out.insert(
@@ -322,6 +345,23 @@ class Mines():
         correct_flagged = -(self.flagged - 1) * self.grid
         total_correct = sum(sum(correct_flagged))
         return(total_correct)
+
+
+    def check_endstate(self):
+        """Check if game has completed
+
+        Returns
+        -------
+        bool
+        """
+        if self.correct_flags() == sum(sum(self.grid == 1)):
+            # All mines flagged
+            return(True)
+        elif sum(sum(self.mask == 0)) == sum(sum(self.grid == 1)):
+            # All not-mines unmasked
+            return(True)
+        else:
+            return(False)
 
 
     def plot_unmask_development(self):
@@ -475,15 +515,47 @@ class Mines():
 
 
 if __name__ == "__main__":
-    mm = Mines(16, 16, 30)
-    # mm.show_solution()
-    # mm.autoplay_random()
+    print("Welcome to [blink bold red]Mineswiffer[/]")
+    xy = input("Please specify grid size (default: 16): ")
+    if not xy:
+        xy = 16
+    else:
+        xy = int(xy)
+    nm = input("Please specify number of mines (default 40): ")
+    if not nm:
+        nm = 40
+    else:
+        nm = int(nm)
+    mm = Mines(xy, xy, nm)
     survived = True
-    while survived:
-        print(mm.print_revealed())
-        print()
-        x = int(input("Please input row: "))
-        y = int(input("Please input column: "))
-        survived = mm.try_square(x,y)
+    print("Game starts!")
+    counter = 0
+
+    x = int(input("Please input row of initial guess: "))
+    y = int(input("Please input column of initial guess: "))
+    survived = mm.try_square(x,y)
     print(mm.print_revealed())
-    print("[bold red]GAME OVER[/]")
+    input("Commencing autoplay...")
+    if survived:
+        mm.autoplay_run()
+    else:
+        print("GAME OVER")
+    print(mm.print_revealed())
+    print(mm.print_solution())
+
+#     mm.autoplay_random()
+#     print(mm.print_revealed())
+
+#     while survived:
+#         counter += 1
+#         print(f"[bold blue]Turn number {str(counter)}[/]")
+#         print(mm.print_revealed())
+#         print()
+#         x = int(input("Please input row: "))
+#         y = int(input("Please input column: "))
+#         survived = mm.try_square(x,y)
+#         if mm.check_endstate(): # If game is finished
+#             print("[bold green]GAME SOLVED[/]")
+#             break
+#     print(mm.print_revealed())
+#     print("[bold red]GAME OVER[/]")
