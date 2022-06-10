@@ -227,6 +227,14 @@ class Mines():
         return(self.try_square(x,y))
 
 
+    def try_square_random_notmine(self):
+        """Try a random square that is not yet revealed nor a mine"""
+        xx, yy = np.where(self.mask + self.grid == 0)
+        coords = list(zip(xx,yy))
+        (x,y) = coords[np.random.choice(len(coords))]
+        return(self.try_square(x,y))
+
+
     ## Graphical output #################################################
 
     def show_solution(self):
@@ -523,7 +531,7 @@ class Mines():
 
 
 if __name__ == "__main__":
-    print("Welcome to [blink bold red]Mineswiffer[/]")
+    print("Welcome to [blink bold green]Mineswiffer[/]")
     xy = input("Please specify grid size (default: 16): ")
     if not xy:
         xy = 16
@@ -537,28 +545,37 @@ if __name__ == "__main__":
     mm = Mines(xy, xy, nm)
     survived = True
     print("Game starts!")
+    print(mm.print_revealed())
     counter = 0
 
     while survived:
         # Show revealed squares
-        print(mm.print_revealed())
-        move = input("[t]ry, [f]lag, [u]nflag, [r]andom, [s]uggest tries, [a]utoplay: ")
+        move = input("[t]ry, [f]lag, [u]nflag, [r]andom, [s]uggest tries, su[g]gest flags, [a]utoplay: ")
+
         if move.lower().startswith('t'):
             # Try square
             x = int(input("Please input row of initial guess: "))
             y = int(input("Please input column of initial guess: "))
             survived = mm.try_square(x,y)
+            print(mm.print_revealed())
+
         elif  move.lower().startswith('f'):
             # Flag square
             x = int(input("Please input row of square to flag: "))
             y = int(input("Please input column of square to flag: "))
             mm.flag_square(x,y)
+            print(mm.print_revealed())
+
         elif  move.lower().startswith('u'):
             x = int(input("Please input row of square to unflag: "))
             y = int(input("Please input column of square to unflag: "))
             mm.unflag_square(x,y)
+            print(mm.print_revealed())
+
         elif move.lower().startswith('r'):
-            survived = mm.try_square_random()
+            survived = mm.try_square_random_notmine()
+            print(mm.print_revealed())
+
         elif move.lower().startswith('s'):
             sugg = mm.suggest_tries()
             to_print = mm.render_revealed()
@@ -573,11 +590,28 @@ if __name__ == "__main__":
             to_print = '\n'.join([''.join(l) for l in to_print])
             print(to_print)
 
+        elif move.lower().startswith('g'):
+            sugg = mm.suggest_flags()
+            to_print = mm.render_revealed()
+            for (x,y) in sugg:
+                to_print[x][y] = '[blink red on blue]F [/]'
+            # Insert row and line numbers as first row and column
+            for row in range(mm.shape[0]):
+                to_print[row].insert(0, str(row).ljust(3))
+            to_print.insert(
+                0,
+                ['.  '] + [str(i).ljust(2) for i in list(range(mm.shape[1]))])
+            to_print = '\n'.join([''.join(l) for l in to_print])
+            print(to_print)
+
         elif move.lower().startswith('a'):
             print("Commencing autoplay...")
             survived = not mm.autoplay_run()
+            print(mm.print_revealed())
+
         else:
             print("Invalid option")
+
     print(mm.print_revealed())
-    print("GAME OVER")
+    print("[blink red]GAME OVER[/]")
     print(mm.print_solution())
